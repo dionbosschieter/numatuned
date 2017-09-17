@@ -8,6 +8,38 @@ def read(path_to_file):
     with open(path_to_file, mode='r') as f:
         return f.read()
 
+class DomainIsNotProvisioned:
+    satisfied = True
+    def __init__(self, domain, mapping):
+        total = mapping['total']
+        for zone_number, pages in mapping.items():
+            if pages == total:
+                print('Domain is already provisioned', domain)
+                self.satisfied = False
+                break
+
+class ZoneHasEnoughSpaceForDomain:
+    satisfied = False
+    def __init__(self, zone, mapping):
+        print('ZoneHasEnoughSpaceForDomain', zone.pagesfree(),' < ',mapping['total'])
+        self.satisfied = zone.pagesfree() < mapping['total']
+
+class DomainIsAlreadyOnZone:
+    satisfied = False
+    def __init__(self, zone, mapping):
+        zone_numa_mapping = sorted(mapping.items(), key=lambda numamap: numamap[1])
+        # zone equals zone with most pages of domain
+        self.satisfied = zone.number == zone_numa_mapping[0][0]
+
+class ZoneHasMostPagesFree:
+    satisfied = True
+    def __init__(self, zones, thiszone):
+        for zone in zones:
+            if zone.number == thiszone.number:
+                continue
+            if thiszone.pagesfree < zone.pagesfree:
+                satisfied = False
+
 class Zone:
     """Zone value object"""
     number = 0
@@ -64,7 +96,7 @@ class MappingGenerator:
 
     def get_numa_mapping_for_pid(self,pid):
         mapping = read("/proc/{}/numa_maps".format(pid))
-        pid_mapping = {}
+        pid_mapping = {'total':0}
 
         # init pid_mapping
         for zone in self.zones:
@@ -74,14 +106,13 @@ class MappingGenerator:
             line_struct = self.get_mapping_struct_from_line(line)
             if ('kernelpagesize_kB' in line_struct) == False:
                 continue # skip if no pages
-            pagesize = int(line_struct['kernelpagesize_kB'])
 
             # get pages foreach numa zone
             for zone in self.zones:
                 if zone.get_zone_key() in line_struct:
                     num_pages = int(line_struct[zone.get_zone_key()])
-                    pages_in_kb = num_pages * pagesize
-                    pid_mapping[zone.number] = pid_mapping[zone.number] + pages_in_kb
+                    pid_mapping[zone.number] = pid_mapping[zone.number] + num_pages
+                    pid_mapping['total'] = pid_mapping['total'] + num_pages
 
         return pid_mapping
 
@@ -114,6 +145,7 @@ class Virsh:
         return domain_list
 
     def execute(self, command):
+        print(command)
         return True # TODO: implement
 
     def migrate_to(self, zone):
@@ -129,16 +161,36 @@ for zone in zonelist:
 # we can start over without sticking to the current numatune__nodeset
 class ProvisioningService:
     zones = []
+    early_abort = 10
 
     def __init__(self, zones):
         self.zones = zones
 
-    def sort_domain_list(self, domain_list):
-         # TODO: implement
-        return domain_list
+    def check_score_for_zone(self, zone, domain, mapping):
+        rules = [
+            (10, DomainIsNotProvisioned(domain, mapping)),
+            (10, ZoneHasEnoughSpaceForDomain(zone, mapping)),
+            (1,  DomainIsAlreadyOnZone(zone, mapping)),
+            (1,  ZoneHasMostPagesFree(self.zones, zone)),
+        ]
+        score = 0
+        for bad_score, rule in rules:
+            if score == self.early_abort:
+                print('Score == early_abort', domain)
+                break
+            if rule.satisfied == False:
+                score = score + bad_score
+
+        return score
 
     def get_zone_for_domain(self, domain, mapping):
-        return False
+        score_list = []
+        for zone in self.zones:
+            score = self.check_score_for_zone(zone, domain, mapping)
+            if score < self.early_abort:
+                score_list.append((score, zone))
+
+        return score_list[0] if score_list else False
 
 domainlist = Virsh.get_domain_list()
 mappinggenerator = MappingGenerator(domainlist, zonelist)
@@ -147,10 +199,7 @@ distribution_list = mappinggenerator.generate()
 # TODO: build class ProvisioningService
 provisioning_service = ProvisioningService(zonelist)
 
-# TODO: build sorting method
-sorted_domains = provisioning_service.sort_domain_list(distribution_list)
-
-for domain, mapping in sorted_domains.items():
+for domain, mapping in distribution_list.items():
     print('Checking', domain)
 
     zone = provisioning_service.get_zone_for_domain(domain, mapping)
@@ -161,18 +210,3 @@ for domain, mapping in sorted_domains.items():
 
     virsh = Virsh(domain)
     virsh.migrate_to(zone)
-
-    total = 0
-    for zone_number,pages in mapping.items():
-        total = total + pages
-    print('- total pages ', total)
-
-    # percentual calculation
-    preferred_zone = False
-    for zone in zonelist:
-        pages_on_zone = mapping[zone.number]
-        percent = (100 / total) * pages_on_zone
-        print('- percent ', percent, 'on zone', zone.number)
-        if percent > 75:
-            preferred_zone = zone
-            print ('-- most pages are on zone',zone.number)
