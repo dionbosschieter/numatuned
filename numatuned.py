@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import glob
 
 def read(path_to_file):
     """
@@ -54,10 +55,12 @@ class Main:
         self.zones = zones
 
     def generate_distribution(self):
+        distribution_list = {}
         for domain, pid in self.domains.items():
-            print(domain, pid)
-            print(self.get_numa_mapping_for_pid(pid))
-        return []
+            uniq_key = domain + '_' + pid
+            distribution_list[uniq_key] = self.get_numa_mapping_for_pid(pid)
+
+        return distribution_list
 
     def get_numa_mapping_for_pid(self,pid):
         mapping = read("/proc/{}/numa_maps".format(pid))
@@ -93,12 +96,60 @@ class Main:
 
         return line_dict
 
+def get_domain_list():
+    pid_files = glob.glob('/var/run/libvirt/qemu/*.pid')
+    domain_list = {}
+    for pid_file in pid_files:
+        # read the pid
+        domain_list[pid_file] = read(pid_file)
+
+    return domain_list
+
 zonelist = Zone.get_zones()
-domainlist = {'test-domain':2057}
+domainlist = get_domain_list()
 distribution = Main(domainlist, zonelist)
 
 for zone in zonelist:
-    print('getting free mem for zone', zone.number)
-    print(zone.pagesfree())
+    print('getting free mem for zone', zone.number, zone.pagesfree())
 
-print(distribution.generate_distribution())
+# keep an inmem status of what not to move
+# so if we change the zone distribution algorithm
+# we can start over without sticking to the current numatune__nodeset
+already_done = []
+distribution_list = distribution.generate_distribution()
+
+# TODO: build class ProvisioningService
+provisioning_service = ProvisioningService(zonelist)
+
+# TODO: build sorting method
+sorted_domains = provisioning_service.sort_domain_list(distribution_list)
+
+for domain, mapping in sorted_domains.items():
+    print('Checking', domain)
+    if provisioning_service.should_skip(domain):
+        print('Skipping ', domain)
+        continue
+
+    zone = provisioning_service.get_zone_for_domain(domain, mapping)
+
+    virsh = Virsh(domain)
+
+    # todo: implement
+    virsh.migrate_to(zone)
+
+    total = 0
+    for zone_number,pages in mapping.items():
+        total = total + pages
+    print('- total pages ', total)
+
+    # percentual calculation
+    preferred_zone = False
+    for zone in zonelist:
+        pages_on_zone = mapping[zone.number]
+        percent = (100 / total) * pages_on_zone
+        print('- percent ', percent, 'on zone', zone.number)
+        if percent > 75:
+            preferred_zone = zone
+            print ('-- most pages are on zone',zone.number)
+
+    already_done.append(domain)
