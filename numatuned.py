@@ -47,14 +47,14 @@ class Zone:
             zones.append(Zone(zone_number))
         return zones
 
-class Main:
-    """This class is used to generate a hashmap with libvirt domainobjects and amount of mem on each"""
+class MappingGenerator:
+    """This class is used to generate a hashmap with libvirt domainobjects and amount of mem on each zone"""
 
     def __init__(self, domains, zones):
         self.domains = domains
         self.zones = zones
 
-    def generate_distribution(self):
+    def generate(self):
         distribution_list = {}
         for domain, pid in self.domains.items():
             uniq_key = domain + '_' + pid
@@ -96,18 +96,30 @@ class Main:
 
         return line_dict
 
-def get_domain_list():
-    pid_files = glob.glob('/var/run/libvirt/qemu/*.pid')
-    domain_list = {}
-    for pid_file in pid_files:
-        # read the pid
-        domain_list[pid_file] = read(pid_file)
+class Virsh:
+    """Class can be used to execute virsh commands for a given domain"""
+    domain = ""
 
-    return domain_list
+    def __init__(self, domain):
+        self.domain = domain
+
+    @staticmethod
+    def get_domain_list():
+        pid_files = glob.glob('/var/run/libvirt/qemu/*.pid')
+        domain_list = {}
+        for pid_file in pid_files:
+            # read the pid
+            domain_list[pid_file] = read(pid_file)
+
+        return domain_list
+
+    def execute(self, command):
+        return True # TODO: implement
+
+    def migrate_to(self, zone):
+        self.execute("numatune {} --setnode {}".format(self.domain, zone.number))
 
 zonelist = Zone.get_zones()
-domainlist = get_domain_list()
-distribution = Main(domainlist, zonelist)
 
 for zone in zonelist:
     print('getting free mem for zone', zone.number, zone.pagesfree())
@@ -115,8 +127,22 @@ for zone in zonelist:
 # keep an inmem status of what not to move
 # so if we change the zone distribution algorithm
 # we can start over without sticking to the current numatune__nodeset
-already_done = []
-distribution_list = distribution.generate_distribution()
+class ProvisioningService:
+    zones = []
+
+    def __init__(self, zones):
+        self.zones = zones
+
+    def sort_domain_list(self, domain_list):
+         # TODO: implement
+        return domain_list
+
+    def get_zone_for_domain(self, domain, mapping):
+        return False
+
+domainlist = Virsh.get_domain_list()
+mappinggenerator = MappingGenerator(domainlist, zonelist)
+distribution_list = mappinggenerator.generate()
 
 # TODO: build class ProvisioningService
 provisioning_service = ProvisioningService(zonelist)
@@ -126,15 +152,14 @@ sorted_domains = provisioning_service.sort_domain_list(distribution_list)
 
 for domain, mapping in sorted_domains.items():
     print('Checking', domain)
-    if provisioning_service.should_skip(domain):
-        print('Skipping ', domain)
-        continue
 
     zone = provisioning_service.get_zone_for_domain(domain, mapping)
 
-    virsh = Virsh(domain)
+    if zone == False:
+        print('Skipping ', domain)
+        continue
 
-    # todo: implement
+    virsh = Virsh(domain)
     virsh.migrate_to(zone)
 
     total = 0
@@ -151,5 +176,3 @@ for domain, mapping in sorted_domains.items():
         if percent > 75:
             preferred_zone = zone
             print ('-- most pages are on zone',zone.number)
-
-    already_done.append(domain)
