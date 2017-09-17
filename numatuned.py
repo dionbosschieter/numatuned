@@ -13,23 +13,25 @@ class DomainIsNotProvisioned:
     def __init__(self, domain, mapping):
         total = mapping['total']
         for zone_number, pages in mapping.items():
-            if pages == total:
-                print('Domain is already provisioned', domain)
+            if zone_number != 'total' and pages == total:
                 self.satisfied = False
                 break
 
 class ZoneHasEnoughSpaceForDomain:
     satisfied = False
     def __init__(self, zone, mapping):
-        print('ZoneHasEnoughSpaceForDomain', zone.pagesfree(),' < ',mapping['total'])
-        self.satisfied = zone.pagesfree() < mapping['total']
+        self.satisfied = zone.pagesfree() > mapping['total']
 
 class DomainIsAlreadyOnZone:
     satisfied = False
     def __init__(self, zone, mapping):
-        zone_numa_mapping = sorted(mapping.items(), key=lambda numamap: numamap[1])
+        zone_numa_mapping = sorted(mapping.items(), key=lambda numamap: numamap[1], reverse=True)
         # zone equals zone with most pages of domain
-        self.satisfied = zone.number == zone_numa_mapping[0][0]
+        for zone_key, pages in zone_numa_mapping:
+            if zone_key == 'total':
+                continue
+            self.satisfied = zone.number == zone_key
+            break
 
 class ZoneHasMostPagesFree:
     satisfied = True
@@ -37,8 +39,8 @@ class ZoneHasMostPagesFree:
         for zone in zones:
             if zone.number == thiszone.number:
                 continue
-            if thiszone.pagesfree < zone.pagesfree:
-                satisfied = False
+            if thiszone.pagesfree() < zone.pagesfree():
+                self.satisfied = False
 
 class Zone:
     """Zone value object"""
@@ -66,7 +68,7 @@ class Zone:
 
     def pagesfree(self):
         vmstat = self.get_vmstat()
-        return vmstat['nr_free_pages']
+        return int(vmstat['nr_free_pages'])
 
     def get_cpu_list(self):
         return read(self.get_node_kernel_path() + "/cpulist")
@@ -176,21 +178,28 @@ class ProvisioningService:
         score = 0
         for bad_score, rule in rules:
             if score == self.early_abort:
-                print('Score == early_abort', domain)
+                print('Score hit early_abort', domain)
                 break
             if rule.satisfied == False:
+                print(rule.__class__, 'was not satisfied')
                 score = score + bad_score
+            else:
+                print(rule.__class__, 'was satisfied')
 
         return score
 
     def get_zone_for_domain(self, domain, mapping):
+        print('Checking provisioning for', domain)
         score_list = []
         for zone in self.zones:
+            print('- checking for zone', zone.number, zone.pagesfree())
             score = self.check_score_for_zone(zone, domain, mapping)
             if score < self.early_abort:
                 score_list.append((score, zone))
 
-        return score_list[0] if score_list else False
+        score_list = sorted(score_list, key=lambda score_zone_list: score_zone_list[0])
+
+        return score_list[0][1] if score_list else False
 
 domainlist = Virsh.get_domain_list()
 mappinggenerator = MappingGenerator(domainlist, zonelist)
@@ -200,13 +209,10 @@ distribution_list = mappinggenerator.generate()
 provisioning_service = ProvisioningService(zonelist)
 
 for domain, mapping in distribution_list.items():
-    print('Checking', domain)
-
     zone = provisioning_service.get_zone_for_domain(domain, mapping)
 
     if zone == False:
         print('Skipping ', domain)
         continue
-
     virsh = Virsh(domain)
     virsh.migrate_to(zone)
