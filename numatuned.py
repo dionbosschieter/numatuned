@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import glob
+from subprocess import call
 
 def read(path_to_file):
     """
@@ -90,11 +91,15 @@ class MappingGenerator:
 
     def generate(self):
         distribution_list = {}
-        for domain, pid in self.domains.items():
-            uniq_key = domain + '_' + pid
-            distribution_list[uniq_key] = self.get_numa_mapping_for_pid(pid)
+        for pid_file, pid in self.domains.items():
+            domain = self.get_domain_from_pid_file(pid_file)
+            distribution_list[domain] = self.get_numa_mapping_for_pid(pid)
 
         return distribution_list
+
+    def get_domain_from_pid_file(self, pid_file):
+        basename = pid_file.split('/')[-1]
+        return basename.replace('.pid','')
 
     def get_numa_mapping_for_pid(self,pid):
         mapping = read("/proc/{}/numa_maps".format(pid))
@@ -146,21 +151,18 @@ class Virsh:
 
         return domain_list
 
-    def execute(self, command):
-        print(command)
-        return True # TODO: implement
+    def execute(self, arguments):
+        print('virsh', arguments)
+        call(['virsh'] + arguments)
 
     def migrate_to(self, zone):
-        self.execute("numatune {} --setnode {}".format(self.domain, zone.number))
+        self.execute(["numatune",self.domain,"--nodeset", str(zone.number)])
 
 zonelist = Zone.get_zones()
 
 for zone in zonelist:
     print('getting free mem for zone', zone.number, zone.pagesfree())
 
-# keep an inmem status of what not to move
-# so if we change the zone distribution algorithm
-# we can start over without sticking to the current numatune__nodeset
 class ProvisioningService:
     zones = []
     early_abort = 10
@@ -204,8 +206,6 @@ class ProvisioningService:
 domainlist = Virsh.get_domain_list()
 mappinggenerator = MappingGenerator(domainlist, zonelist)
 distribution_list = mappinggenerator.generate()
-
-# TODO: build class ProvisioningService
 provisioning_service = ProvisioningService(zonelist)
 
 for domain, mapping in distribution_list.items():
