@@ -35,3 +35,12 @@ class Virsh:
                 if value != '':
                     return True
         return False
+
+    def is_running(self):
+        output = self.execute(["domstate", self.domain])
+        domstate = output.strip('\n').strip(' ').strip('\n')
+        return domstate == 'running'
+
+    def get_pid(self):
+        pid = read('/var/run/libvirt/qemu/' + self.domain + '.pid')
+        return pid

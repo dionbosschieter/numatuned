@@ -1,5 +1,6 @@
 from .rules.domainisnotprovisioned import DomainIsNotProvisioned
 from .rules.domainisalreadyonzone import DomainIsAlreadyOnZone
+from .rules.domainisrunning import DomainIsRunning
 from .rules.zonehasenoughspacefordomain import ZoneHasEnoughSpaceForDomain
 from .rules.zonehasmostpagesfree import ZoneHasMostPagesFree
 
@@ -14,6 +15,7 @@ class ProvisioningService:
         rules = [
             (10, DomainIsNotProvisioned(domain)),
             (10, ZoneHasEnoughSpaceForDomain(zone, mapping)),
+            (10, DomainIsRunning(domain)),
             (1,  DomainIsAlreadyOnZone(zone, mapping)),
             (1,  ZoneHasMostPagesFree(self.zones, zone)),
         ]

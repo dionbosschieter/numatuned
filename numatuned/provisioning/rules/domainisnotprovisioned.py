@@ -1,4 +1,5 @@
 from numatuned.read import read
+from numatuned.virsh import virsh
 
 class DomainIsNotProvisioned:
     satisfied = True
