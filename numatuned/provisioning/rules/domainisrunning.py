@@ -1,4 +1,4 @@
-from numatuned.virsh import virsh
+from numatuned.virsh import Virsh
 
 class DomainIsRunning:
     satisfied = False
