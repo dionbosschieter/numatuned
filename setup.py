@@ -8,4 +8,5 @@ setup(name='numatuned',
       author_email='dbosschieter@transip.nl',
       license='MIT',
       packages=['numatuned'],
+      scripts=['bin/numatuned'],
       zip_safe=False)

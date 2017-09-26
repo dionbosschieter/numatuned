@@ -1,5 +1,5 @@
 import glob
-from subprocess import call
+import subprocess
 from .read import read
 
 class Virsh:
@@ -16,12 +16,22 @@ class Virsh:
         for pid_file in pid_files:
             # read the pid
             domain_list[pid_file] = read(pid_file)
-
         return domain_list
 
     def execute(self, arguments):
-        print('virsh', arguments)
-        call(['virsh'] + arguments)
+        output = subprocess.check_output(["virsh"] + arguments, stderr=subprocess.STDOUT)
+        return output.decode('utf-8')
 
     def migrate_to(self, zone):
-        self.execute(["numatune",self.domain,"--nodeset", str(zone.number)])
+        self.execute(["numatune", self.domain, "--nodeset", str(zone.number)])
+
+    def has_numa_assignment(self):
+        output = self.execute(["numatune", self.domain])
+        for line in output.split('\n'):
+            exploded = line.split(':')
+            key = exploded[0].strip(' ')
+            if key == 'numa_nodeset':
+                value = exploded[1].strip(' ')
+                if value != '':
+                    return True
+        return False
