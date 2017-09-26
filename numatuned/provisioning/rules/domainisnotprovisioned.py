@@ -3,6 +3,6 @@ from numatuned.virsh import Virsh
 
 class DomainIsNotProvisioned:
     satisfied = True
-    def __init__(self, domain, mapping):
+    def __init__(self, domain):
         virsh = Virsh(domain)
-        satisfied = virsh.has_numa_assignment()
+        self.satisfied = virsh.has_numa_assignment() == False
