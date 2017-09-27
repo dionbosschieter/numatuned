@@ -42,5 +42,8 @@ class Virsh:
         return domstate == 'running'
 
     def get_pid(self):
-        pid = read('/var/run/libvirt/qemu/' + self.domain + '.pid')
+        pid = read(self.get_pid_file)
         return pid
+
+    def get_pid_file(self):
+        return '/var/run/libvirt/qemu/' + self.domain + '.pid'

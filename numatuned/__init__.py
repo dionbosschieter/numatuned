@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-from .provisioning.provisioningservice import ProvisioningService
-from .mappinggenerator import MappingGenerator
-from .virsh import Virsh
-from .zone import Zone
+from numatuned.provisioning.provisioningservice import ProvisioningService
+from numatuned.mappinggenerator import MappingGenerator
+from numatuned.virsh import Virsh
+from numatuned.zone import Zone
 
 def fire():
     zonelist = Zone.get_zones()
