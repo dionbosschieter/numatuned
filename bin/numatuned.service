@@ -1,0 +1,9 @@
+[Unit]
+Description=Replacement of numad for Linux hypervisors running libvirt, qemu
+
+[Service]
+Type=forking
+ExecStart=/usr/bin/numatuned $DAEMON_ARGS -i 15
+
+[Install]
+WantedBy=multi-user.target
