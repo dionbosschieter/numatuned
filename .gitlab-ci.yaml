@@ -1,0 +1,23 @@
+image: docker.transip.us/transip/php:7
+
+stages:
+  - lint
+  - build
+
+lint:php:
+  stage: lint
+  script:
+    - apt-get -y install python3-setuptools python3-all pylint
+    - pylint numatuned
+
+build:phar:
+  stage: build
+  before_script:
+    - sh build.sh
+  script:
+    - sh build.sh
+    - dpkg -i deb_dist/python3-numatuned_0.1-1_all.deb
+    - numatuned
+  artifacts:
+    paths:
+      - deb_dist/python3-numatuned_*.deb
