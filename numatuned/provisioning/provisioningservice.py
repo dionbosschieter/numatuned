@@ -14,18 +14,19 @@ class ProvisioningService:
             (10, DomainIsRunning(domain)),
             (10, DomainIsNotFresh(domain)),
             (1,  DomainIsAlreadyOnZone(zone, mapping)),
-            (1,  ZoneHasMostPagesFree(self.zones, zone)),
+            (2,  ZoneHasMostPagesFree(self.zones, zone)),
         ]
         score = 0
         for bad_score, rule in rules:
+            rulename = rule.__class__.__name__
             if score == self.early_abort:
                 print('Score hit early_abort', domain)
                 break
             if rule.satisfied == False:
-                print(rule.__class__, 'was not satisfied')
+                print(rulename, 'was not satisfied')
                 score = score + bad_score
             else:
-                print(rule.__class__, 'was satisfied')
+                print(rulename, 'was satisfied')
 
         return score
 

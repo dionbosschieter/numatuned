@@ -51,8 +51,7 @@ def run(zonelist, dryrun):
         if zone is False:
             print('Skipping ', domain)
             continue
+        print('Migrating', domain, 'to', zone.number)
         if dryrun is False:
             virsh = Virsh(domain)
             virsh.migrate_to(zone)
-        else:
-            print('Would migrate', domain, 'to', zone.number)
