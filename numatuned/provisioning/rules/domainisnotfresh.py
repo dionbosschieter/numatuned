@@ -11,5 +11,5 @@ class DomainIsNotFresh:
         mtime = os.path.getmtime(pidfile)
         now = time.time()
         # domain is 5 minutes old
-        if now + 300 > mtime:
+        if now - 300 > mtime:
             self.satisfied = True
