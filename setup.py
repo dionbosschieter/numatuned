@@ -7,6 +7,6 @@ setup(name='numatuned',
       author='Dion Bosschieter',
       author_email='dbosschieter@transip.nl',
       license='MIT',
-      packages=['numatuned'],
+      packages=['numatuned', 'numatuned.provisioning', 'numatuned.provisioning.rules'],
       scripts=['bin/numatuned'],
       zip_safe=False)
