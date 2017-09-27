@@ -26,7 +26,7 @@ class CustomerInstaller(install):
                     raise
 
 setup(name='numatuned',
-      version='0.2',
+      version='0.3',
       description='Numad replacement for qemu/libvirtd virtual machines that uses virsh numatune --nodeset to bind a virtual machine to a numa zone',
       url='http://github.com/dionbosschieter/numatuned',
       author='Dion Bosschieter',
