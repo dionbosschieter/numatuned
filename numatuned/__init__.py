@@ -11,7 +11,7 @@ from .signalcatcher import SignalCatcher
 def fire(scansleep, dryrun=False):
     """Fires the application of, stays in a loop checking for
     zone balancing every scansleep seconds"""
-    migated_domains = []
+    migrated_domains = []
     while True:
         zonelist = Zone.get_zones()
         signalcatcher = SignalCatcher()
