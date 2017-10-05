@@ -11,6 +11,7 @@ from .signalcatcher import SignalCatcher
 def fire(scansleep, dryrun=False):
     """Fires the application of, stays in a loop checking for
     zone balancing every scansleep seconds"""
+    migated_domains = []
     while True:
         zonelist = Zone.get_zones()
         signalcatcher = SignalCatcher()
@@ -25,7 +26,7 @@ def fire(scansleep, dryrun=False):
         for zone in zonelist:
             print('getting free mem for zone', zone.number, zone.pagesfree())
 
-        run(zonelist, dryrun)
+        migrated_domains = run(zonelist, dryrun, migrated_domains)
 
         if dryrun:
             print('Stopping loop as we are dry running')
@@ -37,7 +38,7 @@ def fire(scansleep, dryrun=False):
                 print('Stopping...', i)
                 return
 
-def run(zonelist, dryrun):
+def run(zonelist, dryrun, migrated_domains):
     """Creates a domain list with a mapping on each zone
     then migrates if the ProvisioningService returns a zone"""
     domainlist = Virsh.get_domain_list()
@@ -46,12 +47,16 @@ def run(zonelist, dryrun):
     provisioning_service = ProvisioningService(zonelist)
 
     for domain, mapping in distribution_list.items():
+        virsh = Virsh(domain)
+        if virsh.get_pid in migrated_domains
+            continue
         zone = provisioning_service.get_zone_for_domain(domain, mapping)
 
         if zone is False:
             print('Skipping ', domain)
             continue
         print('Migrating', domain, 'to', zone.number)
+        migrated_domains.append(virsh.get_pid)
         if dryrun is False:
-            virsh = Virsh(domain)
             virsh.migrate_to(zone)
+    return migrated_domains
