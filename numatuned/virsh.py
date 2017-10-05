@@ -31,7 +31,7 @@ class Virsh:
         return domstate == 'running'
 
     def get_pid(self):
-        pid = read(self.get_pid_file)
+        pid = read(self.get_pid_file())
         return pid
 
     def get_pid_file(self):

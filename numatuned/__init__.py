@@ -48,7 +48,7 @@ def run(zonelist, dryrun, migrated_domains):
 
     for domain, mapping in distribution_list.items():
         virsh = Virsh(domain)
-        if virsh.get_pid in migrated_domains
+        if virsh.get_pid() in migrated_domains
             continue
         zone = provisioning_service.get_zone_for_domain(domain, mapping)
 
@@ -56,7 +56,7 @@ def run(zonelist, dryrun, migrated_domains):
             print('Skipping ', domain)
             continue
         print('Migrating', domain, 'to', zone.number)
-        migrated_domains.append(virsh.get_pid)
+        migrated_domains.append(virsh.get_pid())
         if dryrun is False:
             virsh.migrate_to(zone)
     return migrated_domains
