@@ -5,7 +5,6 @@ from numatuned.provisioning.rules.zonehasenoughspacefordomain import ZoneHasEnou
 from numatuned.provisioning.rules.zonehasmostpagesfree import ZoneHasMostPagesFree
 
 __all__ = [
-    'DomainIsNotProvisioned',
     'DomainIsAlreadyOnZone',
     'DomainIsRunning',
     'DomainIsNotFresh',
