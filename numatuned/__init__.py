@@ -48,7 +48,7 @@ def run(zonelist, dryrun, migrated_domains):
 
     for domain, mapping in distribution_list.items():
         virsh = Virsh(domain)
-        if virsh.get_pid() in migrated_domains
+        if virsh.get_pid() in migrated_domains:
             continue
         zone = provisioning_service.get_zone_for_domain(domain, mapping)
 
