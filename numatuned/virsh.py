@@ -23,7 +23,7 @@ class Virsh:
         return output.decode('utf-8')
 
     def migrate_to(self, zone):
-        subprocess.call(["migratepages", self.get_pid, "all", str(zone.number)])
+        self.execute(["numatune", self.domain, "--nodeset", str(zone.number), "--mode", "preferred"])
 
     def is_running(self):
         output = self.execute(["domstate", self.domain])
