@@ -1,8 +1,11 @@
 class ZoneHasMostPagesFree:
-    satisfied = True
     def __init__(self, zones, thiszone):
-        for zone in zones:
-            if zone.number == thiszone.number:
+        self.zones = zones
+        self.thiszone = thiszone
+	def is_satisfied(self):
+        for zone in self.zones:
+            if zone.number == self.thiszone.number:
                 continue
-            if thiszone.pagesfree() < zone.pagesfree():
-                self.satisfied = False
+            if self.thiszone.pagesfree() < zone.pagesfree():
+                return False
+        return True
