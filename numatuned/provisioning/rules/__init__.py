@@ -1,4 +1,3 @@
-from numatuned.provisioning.rules.domainisnotprovisioned import DomainIsNotProvisioned
 from numatuned.provisioning.rules.domainisalreadyonzone import DomainIsAlreadyOnZone
 from numatuned.provisioning.rules.domainisrunning import DomainIsRunning
 from numatuned.provisioning.rules.domainisnotfresh import DomainIsNotFresh
@@ -7,7 +6,6 @@ from numatuned.provisioning.rules.zonehasmostpagesfree import ZoneHasMostPagesFr
 from numatuned.provisioning.rules.entiredomainfitsinzone import EntireDomainFitsInZone
 
 __all__ = [
-    'DomainIsNotProvisioned',
     'DomainIsAlreadyOnZone',
     'DomainIsRunning',
     'DomainIsNotFresh',

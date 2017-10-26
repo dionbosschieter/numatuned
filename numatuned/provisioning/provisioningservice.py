@@ -9,7 +9,6 @@ class ProvisioningService:
 
     def check_score_for_zone(self, zone, domain, mapping):
         rules = [
-            (10, DomainIsNotProvisioned(domain)),
             (10, ZoneHasEnoughSpaceForDomain(zone, mapping)),
             (10, DomainIsRunning(domain)),
             (10, DomainIsNotFresh(domain)),

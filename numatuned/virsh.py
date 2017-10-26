@@ -23,18 +23,7 @@ class Virsh:
         return output.decode('utf-8')
 
     def migrate_to(self, zone):
-        self.execute(["numatune", self.domain, "--nodeset", str(zone.number)])
-
-    def has_numa_assignment(self):
-        output = self.execute(["numatune", self.domain])
-        for line in output.split('\n'):
-            exploded = line.split(':')
-            key = exploded[0].strip(' ')
-            if key == 'numa_nodeset':
-                value = exploded[1].strip(' ')
-                if value != '':
-                    return True
-        return False
+        subprocess.call(["migratepages", self.get_pid, "all", str(zone.number)])
 
     def is_running(self):
         output = self.execute(["domstate", self.domain])
@@ -42,7 +31,7 @@ class Virsh:
         return domstate == 'running'
 
     def get_pid(self):
-        pid = read(self.get_pid_file)
+        pid = read(self.get_pid_file())
         return pid
 
     def get_pid_file(self):
